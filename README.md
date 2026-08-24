@@ -2,203 +2,135 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Tkinter](https://img.shields.io/badge/UI-Tkinter%20%2B%20ttkbootstrap-green)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%2F%20Cross--Platform-orange)
+![Web](https://img.shields.io/badge/Web-Responsive%20HTML%2FCSS%2FJS-orange)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%2F%20Cross--Platform-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Version](https://img.shields.io/badge/Version-4.0.0-brightgreen)
 
-NodeForge is a desktop application built with Python for batch-renaming V2Ray subscription links in a fast, clean, and protocol-aware way. It supports multiple link types, live protocol counters, timestamp-based naming, optional country flag tagging, and export to TXT or clipboard.
-
----
-
-## Features
-
-- Batch rename subscription links in one click
-- Supports multiple protocols:
-  - VMess
-  - VLESS
-  - Trojan
-  - Shadowsocks
-  - Hysteria
-  - Hysteria2
-  - TUIC
-  - SOCKS
-  - HTTP
-  - Other
-- Automatic numbering with custom prefix
-- Optional timestamp in renamed nodes
-- Optional beta country flag tagging using IP geolocation
-- Live protocol counters in the UI
-- Input from:
-  - text file
-  - clipboard
-  - manual paste
-- Output to:
-  - TXT file
-  - clipboard
-- Friendly dark-themed GUI using `ttkbootstrap`
-- Threaded processing to keep the interface responsive
+**NodeForge** is a powerful, modern tool for batch‑renaming V2Ray/Xray subscription links. It offers both a **desktop application** (Python + Tkinter/ttkbootstrap) and a **web edition** (HTML/CSS/JS) with an advanced glassmorphism UI. It supports many protocols, smart naming with timestamps and country flags, geolocation caching, GitHub integration, and much more.
 
 ---
 
-## Preview
+## ✨ Features
 
-> Add screenshots here if you want your repository to look more professional.
+### Core Functionality
+- **Batch rename** hundreds of subscription links in seconds
+- **Protocol auto‑detection** for:
+  - VMess, VLESS, Trojan, Shadowsocks, Hysteria, Hysteria2, TUIC, SOCKS, HTTP, SSH, WireGuard, Reality, gRPC, and more
+- **Smart naming**:
+  - Custom prefix and start number
+  - Optional timestamp (multiple formats)
+  - Optional country flag (from GeoIP)
+  - Preserve original country/flag from old names (with automatic conversion of country names to flag emoji)
+  - Choose flag position (beginning or end)
+- **Duplicate removal**, **protocol filtering**, **sorting** (by name, country, protocol)
+- **Live preview** of old and new names
+- **Detailed statistics** including protocol counts and country flag distribution
 
-Example:
+### Input & Output
+- **Input sources**:
+  - Paste from clipboard
+  - Load `.txt` file
+  - Drag & drop (desktop, if `tkinterdnd2` installed)
+  - Fetch from subscription URL (base64 decoded automatically)
+- **Output destinations**:
+  - Copy to clipboard
+  - Save as TXT, CSV, or JSON
+  - **Direct upload to GitHub** (see below)
 
-```md
-![Main Window](screenshots/main-window.png)
-![Protocol Counter](screenshots/protocol-counter.png)
-````
+### GitHub Integration
+- **Auto‑detect** GitHub file URL – paste a link like `https://github.com/owner/repo/blob/main/Mix.txt` and it extracts repository, branch, and file path automatically.
+- **Three upload modes**:
+  - **Replace**: overwrite the file with new content
+  - **Prepend**: add new content at the beginning of the existing file
+  - **Append**: add new content at the end of the existing file
+- **Test connection** button to validate token, repo, and file before uploading.
+- Secure token storage (locally in `config.json` or browser `localStorage`).
+
+### User Interface
+- **Modern glassmorphism design** with gradient backgrounds, animated blobs, and smooth transitions.
+- **Responsive layout** – works on any screen size from desktop to mobile.
+- **Multiple themes** (desktop) including `cyborg`, `darkly`, `superhero`, etc.
+- **Live progress** with percentage, ETA, and processing speed.
+- **Pause / Resume / Cancel** during processing.
+- **Multi‑threaded** GeoIP resolution for fast country lookup (desktop) or asynchronous fetch (web).
 
 ---
 
-## How It Works
+## 🌐 Web Edition
 
-NodeForge reads a list of subscription links and detects the protocol of each one.
-Then it applies a new name based on:
+The repository includes a fully functional **web version** (`index.html`) that runs entirely in the browser.  
+**Try it live:** [GitHub Pages link – to be added]  
 
-* a custom prefix
-* an incremental number
-* an optional timestamp
+### Web Edition Features
+- All core renaming features (no installation required)
+- Client‑side geolocation using `ipwho.is` with caching
+- Export to TXT, CSV, JSON, or clipboard
+- GitHub upload with replace/prepend/append modes (requires a GitHub token)
+- Beautiful responsive UI with glassmorphism and animated background
 
-For example:
+---
 
-```text
-Node-0
-Node-1
-Node-2
+## 📥 Installation (Desktop)
+
+### Requirements
+- Python 3.10 or newer
+- `ttkbootstrap`
+- `requests`
+- Optional: `tkinterdnd2` for drag‑and‑drop support
+
+### Steps
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mehrdadmb2/NodeForge.git
+   cd NodeForge
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install ttkbootstrap requests
+   # Optional for drag & drop:
+   pip install tkinterdnd2
+   ```
+
+3. **Run the program**
+   ```bash
+   python confign.py
+   ```
+
+---
+
+## 🚀 Usage
+
+### Desktop App
+1. **Input** – paste links, load a file, or fetch a subscription.
+2. **Configure naming** – set prefix, start number, timestamp, flags, etc.
+3. **Process** – click “Start Processing”. You can pause, resume, or cancel.
+4. **Output** – view the renamed links, copy them, export to file, or upload to GitHub.
+
+### Web Edition
+1. Open `index.html` in a browser.
+2. Paste or load your links.
+3. Adjust settings and click **Start Processing**.
+4. Use the **GitHub tab** to upload directly to your repository.
+
+---
+
+## 🧪 Example
+
+**Input**
 ```
-
-Or with timestamp:
-
-```text
-Node-0_20250624_153045
-Node-1_20250624_153046
-```
-
-If the beta country-flag option is enabled, the app tries to detect the host IP/domain location and appends a country flag to the node name.
-
----
-
-## Supported Link Types
-
-### VMess
-
-Renames the `ps` field inside the base64-encoded JSON config.
-
-### URI-based protocols
-
-For protocols like:
-
-* VLESS
-* Trojan
-* Hysteria
-* Hysteria2
-* TUIC
-* SOCKS
-* HTTP
-
-the app replaces the fragment after `#` with the new generated name.
-
-### Shadowsocks
-
-Adds or updates the fragment name after `#`.
-
----
-
-## Requirements
-
-* Python 3.10 or newer
-* `ttkbootstrap`
-* `requests`
-
----
-
-## Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/your-username/nodeforge.git
-cd nodeforge
-```
-
-### 2. Install dependencies
-
-```bash
-pip install ttkbootstrap requests
-```
-
-### 3. Run the program
-
-```bash
-python confign.py
-```
-
----
-
-## Usage
-
-1. Paste subscription links into the input box
-2. Or load them from a `.txt` file
-3. Set the naming prefix
-4. Choose the starting number
-5. Enable timestamp if needed
-6. Optionally enable country-flag tagging
-7. Click **Apply Changes and Numbering**
-8. Copy the result or save it to a TXT file
-
----
-
-## Interface Overview
-
-### Input Section
-
-Used for pasting or loading subscription links.
-
-### Naming Settings
-
-Contains:
-
-* prefix input
-* start number
-* timestamp toggle
-* timestamp format selector
-* country-flag beta option
-
-### Output Section
-
-Shows the renamed links after processing.
-
-### Statistics Section
-
-Displays:
-
-* total input count
-* successful renames
-* failed links
-* protocol breakdown
-
-### Protocol Counter Panel
-
-Shows live counts for each protocol type in a colored and organized layout.
-
----
-
-## Example Input
-
-```text
 vmess://eyJhZGQiOiIxLjIuMy40IiwiYWlkIjoiMCIsInBzIjoiVGVzdCIsInBvcnQiOiI0NDMiLCJpZCI6ImFiYyJ9
 vless://uuid@example.com:443?type=tcp#OldName
 trojan://password@example.com:443#OldName
 ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@example.com:8388#OldName
 ```
 
----
+**Settings**  
+`prefix = "Node-"`, `start = 0`, `timestamp = off`, `flags = off`
 
-## Example Output
-
-```text
+**Output**
+```
 vmess://...
 vless://...#Node-0
 trojan://...#Node-1
@@ -207,65 +139,82 @@ ss://...#Node-2
 
 ---
 
-## File Structure
+## 📁 File Structure
 
-```text
-nodeforge/
+```
+NodeForge/
 │
-├── confign.py
+├── confign.py               # Desktop application (Python)
+├── index.html               # Web edition (HTML/CSS/JS)
 ├── README.md
-└── screenshots/
-    ├── main-window.png
-    └── protocol-counter.png
+├── LICENSE
+├── screenshots/
+│   ├── desktop-main.png
+│   ├── desktop-github.png
+│   ├── web-main.png
+│   └── ...
+├── config.json              # Settings (auto‑generated)
+├── geo_cache.json           # GeoIP cache (auto‑generated)
+└── logs/                    # Daily logs
 ```
 
 ---
 
-## Notes
+## ⚙️ Configuration
 
-* The country flag feature is experimental.
-* If geolocation lookup fails, the app continues working normally.
-* Invalid or unsupported links are marked as failed.
-* The UI is threaded so large lists do not freeze the window.
+Settings are stored locally in `config.json` (desktop) or browser `localStorage` (web).  
+You can edit the file directly or use the **Settings** tab in the app.
 
----
-
-## Future Improvements
-
-* Search and filter support
-* Copy output with one click after processing
-* Export counters as a report
-* Better protocol parsing for edge cases
-* Auto-detect mixed line formats
-* Save user preferences
-* Add drag-and-drop file support
+### GitHub Upload Configuration
+- **GitHub Token** – obtain from [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens). Select `repo` scope.
+- **Repository** – format `owner/repo` (e.g., `mehrdadmb2/NodeForge`).
+- **File Path** – relative to the repository root (e.g., `Mix.txt` or `folder/subfolder/file.txt`).
+- **Branch** – usually `main` or `master`.
 
 ---
 
-## Contributing
+## 🛠️ Tech Stack
 
-Pull requests and suggestions are welcome.
-
-If you want to contribute:
-
-1. Fork the repository
-2. Create a new branch
-3. Commit your changes
-4. Open a pull request
+| Component      | Technology                               |
+|----------------|------------------------------------------|
+| Desktop app    | Python, Tkinter, ttkbootstrap            |
+| Web app        | HTML5, CSS3, JavaScript (vanilla)        |
+| GeoIP          | `ip-api.com` (desktop), `ipwho.is` (web) |
+| GitHub API     | REST API v3                              |
 
 ---
 
-## License
+## 🔮 Future Improvements
 
-This project is licensed under the MIT License.
-See the `LICENSE` file for details.
+- [ ] Full Persian (Farsi) translation
+- [ ] Batch processing from multiple files
+- [ ] Config health check (ping, TCP connect)
+- [ ] QR code generation
+- [ ] Undo history
+- [ ] Advanced filtering with regex
+- [ ] Export as subscription (base64‑encoded)
 
 ---
 
-## Author
+## 🤝 Contributing
 
-Created by **Mehrdad**
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-```
+---
 
+## 📄 License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👨‍💻 Author
+
+**Mehrdad**  
+[GitHub](https://github.com/mehrdadmb2) • [Repository](https://github.com/mehrdadmb2/NodeForge)
+
+---
+
+**Enjoy renaming your V2Ray configs with style!**  
+If you find this project useful, please give it a ⭐ on GitHub.
 ```
