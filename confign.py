@@ -15,7 +15,7 @@ import os
 from datetime import datetime, timedelta
 from tkinter import filedialog, messagebox, scrolledtext, StringVar, IntVar, BooleanVar, simpledialog
 from tkinter import ttk as tk_ttk
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
@@ -48,7 +48,7 @@ except ImportError:
 # Constants
 # ----------------------------------------------------------------------
 APP_NAME = "V2Ray Config Renamer Pro"
-VERSION = "4.0.0"
+VERSION = "4.0.1"
 CONFIG_FILE = "config.json"
 LOG_DIR = "logs"
 CACHE_FILE = "geo_cache.json"
@@ -282,7 +282,7 @@ def country_code_to_flag(code: str) -> str:
     return ""
 
 # ----------------------------------------------------------------------
-# Country name to ISO code mapping (for conversion to flag)
+# Country name and code to ISO code mapping (for conversion to flag)
 # ----------------------------------------------------------------------
 COUNTRY_NAME_TO_CODE = {
     "united states": "US", "usa": "US", "us": "US",
@@ -332,11 +332,38 @@ COUNTRY_NAME_TO_CODE = {
     "comoros": "KM", "lesotho": "LS", "eswatini": "SZ", "malawi": "MW"
 }
 
+# Two-letter ISO code mapping for direct code detection (e.g., "US", "NL", "HK")
+COUNTRY_CODE_MAP = {
+    "US": "US", "GB": "GB", "UK": "GB", "DE": "DE", "NL": "NL", "FR": "FR",
+    "CA": "CA", "JP": "JP", "SG": "SG", "SE": "SE", "CH": "CH", "FI": "FI",
+    "NO": "NO", "DK": "DK", "IT": "IT", "ES": "ES", "AU": "AU", "NZ": "NZ",
+    "BR": "BR", "IN": "IN", "RU": "RU", "CN": "CN", "TR": "TR", "IR": "IR",
+    "AE": "AE", "SA": "SA", "IL": "IL", "KR": "KR", "HK": "HK", "TW": "TW",
+    "ID": "ID", "MY": "MY", "TH": "TH", "VN": "VN", "PL": "PL", "AT": "AT",
+    "BE": "BE", "CZ": "CZ", "IE": "IE", "PT": "PT", "GR": "GR", "RO": "RO",
+    "BG": "BG", "HU": "HU", "SK": "SK", "SI": "SI", "HR": "HR", "RS": "RS",
+    "UA": "UA", "LV": "LV", "LT": "LT", "EE": "EE", "LU": "LU", "IS": "IS",
+    "CY": "CY", "MT": "MT", "MD": "MD", "GE": "GE", "AM": "AM", "AZ": "AZ",
+    "KZ": "KZ", "UZ": "UZ", "KG": "KG", "TM": "TM", "TJ": "TJ", "AF": "AF",
+    "PK": "PK", "BD": "BD", "LK": "LK", "NP": "NP", "BT": "BT", "MV": "MV",
+    "MM": "MM", "LA": "LA", "KH": "KH", "BN": "BN", "PH": "PH", "MN": "MN",
+    "KP": "KP", "EG": "EG", "LY": "LY", "TN": "TN", "DZ": "DZ", "MA": "MA",
+    "SD": "SD", "SS": "SS", "ET": "ET", "SO": "SO", "KE": "KE", "UG": "UG",
+    "RW": "RW", "BI": "BI", "TZ": "TZ", "MZ": "MZ", "ZM": "ZM", "ZW": "ZW",
+    "BW": "BW", "NA": "NA", "ZA": "ZA", "NG": "NG", "GH": "GH", "CI": "CI",
+    "SN": "SN", "ML": "ML", "BF": "BF", "NE": "NE", "TD": "TD", "CM": "CM",
+    "GA": "GA", "CG": "CG", "CD": "CD", "AO": "AO", "MG": "MG", "MU": "MU",
+    "SC": "SC", "CV": "CV", "ST": "ST", "GQ": "GQ", "CF": "CF", "BJ": "BJ",
+    "TG": "TG", "LR": "LR", "SL": "SL", "GN": "GN", "GW": "GW", "GM": "GM",
+    "MR": "MR", "EH": "EH", "ER": "ER", "DJ": "DJ", "KM": "KM", "LS": "LS",
+    "SZ": "SZ", "MW": "MW"
+}
+
 def extract_country_flag_from_name(name: str) -> str:
     """
     Extract a flag emoji from the name.
     If a flag emoji already exists, return it.
-    If a country name is found, convert to flag emoji.
+    If a country name or two-letter code is found, convert to flag emoji.
     Returns empty string if none.
     """
     if not name:
@@ -345,6 +372,7 @@ def extract_country_flag_from_name(name: str) -> str:
     flag_match = re.search(r'[\U0001F1E6-\U0001F1FF]{2}', name)
     if flag_match:
         return flag_match.group(0)
+
     # Look for country name (case-insensitive)
     name_lower = name.lower()
     for country, code in COUNTRY_NAME_TO_CODE.items():
@@ -352,6 +380,14 @@ def extract_country_flag_from_name(name: str) -> str:
             # Avoid false positives (e.g., "us" in "status")
             if re.search(r'\b' + re.escape(country) + r'\b', name_lower):
                 return country_code_to_flag(code)
+
+    # Look for two-letter ISO code (e.g., US, NL, HK)
+    # We search as whole word, case-insensitive
+    for code, iso in COUNTRY_CODE_MAP.items():
+        # Use regex to match code as a standalone word
+        if re.search(r'\b' + re.escape(code) + r'\b', name, re.IGNORECASE):
+            return country_code_to_flag(iso)
+
     return ""
 
 # ----------------------------------------------------------------------
@@ -598,11 +634,11 @@ class ProApp:
 
     def _build_main_tab(self):
         # Configure grid weights for responsiveness
-        self.main_tab.grid_rowconfigure(0, weight=1)  # Input area expandable
-        self.main_tab.grid_rowconfigure(1, weight=0)  # Naming settings fixed
-        self.main_tab.grid_rowconfigure(2, weight=0)  # Action buttons fixed
-        self.main_tab.grid_rowconfigure(3, weight=1)  # Output area expandable
-        self.main_tab.grid_rowconfigure(4, weight=0)  # Preview/Stats fixed
+        self.main_tab.grid_rowconfigure(0, weight=1)
+        self.main_tab.grid_rowconfigure(1, weight=0)
+        self.main_tab.grid_rowconfigure(2, weight=0)
+        self.main_tab.grid_rowconfigure(3, weight=1)
+        self.main_tab.grid_rowconfigure(4, weight=0)
         self.main_tab.grid_columnconfigure(0, weight=1)
 
         # Input Section
@@ -661,7 +697,7 @@ class ProApp:
         ttk.Radiobutton(row4, text="At Beginning", variable=self.country_position, value="prefix", bootstyle="toolbutton").pack(side=LEFT, padx=10)
         ttk.Radiobutton(row4, text="At End", variable=self.country_position, value="suffix", bootstyle="toolbutton").pack(side=LEFT, padx=5)
 
-        # Action Buttons + Progress (now using grid)
+        # Action Buttons + Progress
         action_frame = ttk.Frame(self.main_tab)
         action_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
         self.run_btn = ttk.Button(action_frame, text="⚡ Start Processing", command=self.start_processing, bootstyle="success")
@@ -680,7 +716,7 @@ class ProApp:
         self.speed_label = ttk.Label(action_frame, text="")
         self.speed_label.pack(side=LEFT)
 
-        # Output Section (now using grid)
+        # Output Section
         output_frame = ttk.LabelFrame(self.main_tab, text="Output")
         output_frame.grid(row=3, column=0, sticky="nsew", padx=5, pady=5)
         output_frame.grid_rowconfigure(0, weight=1)
@@ -713,7 +749,7 @@ class ProApp:
         sort_combo.pack(side=LEFT, padx=5)
         ttk.Button(filter_frame, text="Sort", command=self.apply_sort, bootstyle="info-outline").pack(side=LEFT, padx=5)
 
-        # Preview + Stats frame (now using grid)
+        # Preview + Stats frame
         preview_frame = ttk.LabelFrame(self.main_tab, text="Preview & Statistics")
         preview_frame.grid(row=4, column=0, sticky="ew", padx=5, pady=5)
 
@@ -736,7 +772,6 @@ class ProApp:
         self.stats_summary_label.pack(anchor=W)
 
     def _build_settings_tab(self):
-        # Use a scrollable frame to handle small screens
         canvas = tk.Canvas(self.settings_tab, borderwidth=0)
         scrollbar = ttk.Scrollbar(self.settings_tab, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -752,20 +787,17 @@ class ProApp:
 
         scrollable_frame.grid_columnconfigure(1, weight=1)
 
-        # Theme
         ttk.Label(scrollable_frame, text="Theme:").grid(row=0, column=0, sticky=W, padx=10, pady=5)
         themes = ["darkly", "superhero", "cyborg", "vapor", "solar", "cosmo", "flatly", "journal", "litera", "lumen", "minty", "pulse", "sandstone", "united", "yeti", "morph", "simplex", "cerculean"]
         theme_combo = ttk.Combobox(scrollable_frame, textvariable=self.theme_var, values=themes, state="readonly")
         theme_combo.grid(row=0, column=1, sticky=EW, padx=10)
         ttk.Button(scrollable_frame, text="Apply", command=self.change_theme, bootstyle="primary-outline").grid(row=0, column=2, padx=5)
 
-        # Language
         ttk.Label(scrollable_frame, text="Language:").grid(row=1, column=0, sticky=W, padx=10, pady=5)
         lang_combo = ttk.Combobox(scrollable_frame, textvariable=self.language_var, values=["en", "fa"], state="readonly")
         lang_combo.grid(row=1, column=1, sticky=EW, padx=10)
         ttk.Button(scrollable_frame, text="Apply", command=self.change_language, bootstyle="primary-outline").grid(row=1, column=2, padx=5)
 
-        # Threads
         ttk.Label(scrollable_frame, text="GeoIP Threads:").grid(row=2, column=0, sticky=W, padx=10, pady=5)
         thread_spin = ttk.Spinbox(scrollable_frame, from_=5, to=100, width=5)
         thread_spin.insert(0, str(self.settings.get("max_threads")))
@@ -775,11 +807,9 @@ class ProApp:
             self.geo_resolver.max_workers = int(thread_spin.get())
         ttk.Button(scrollable_frame, text="Save", command=save_threads, bootstyle="primary-outline").grid(row=2, column=2, padx=5)
 
-        # Save all settings
         ttk.Button(scrollable_frame, text="💾 Save All Settings", command=self.save_all_settings, bootstyle="success").grid(row=3, column=1, pady=20)
 
     def _build_github_tab(self):
-        # Scrollable
         canvas = tk.Canvas(self.github_tab, borderwidth=0)
         scrollbar = ttk.Scrollbar(self.github_tab, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -791,27 +821,22 @@ class ProApp:
 
         scrollable_frame.grid_columnconfigure(1, weight=1)
 
-        # Title
         ttk.Label(scrollable_frame, text="GitHub Upload Configuration", font=("Helvetica", 14, "bold")).grid(row=0, column=0, columnspan=3, pady=10)
 
-        # URL auto-detect
         url_frame = ttk.LabelFrame(scrollable_frame, text="Auto-detect from URL")
         url_frame.grid(row=1, column=0, columnspan=3, sticky="ew", padx=10, pady=5)
         url_frame.grid_columnconfigure(1, weight=1)
         ttk.Label(url_frame, text="GitHub URL:").grid(row=0, column=0, padx=5, pady=5)
         self.github_url_entry = ttk.Entry(url_frame, textvariable=self.github_url_var, width=50)
         self.github_url_entry.grid(row=0, column=1, padx=5, pady=5, sticky=EW)
-        # Add paste support to URL entry
         self._add_paste_support(self.github_url_entry)
         ttk.Button(url_frame, text="🔍 Detect", command=self.detect_github_url, bootstyle="primary-outline").grid(row=0, column=2, padx=5)
 
-        # Manual fields
         ttk.Label(scrollable_frame, text="GitHub Token:").grid(row=2, column=0, sticky=W, padx=10, pady=5)
         self.token_entry = ttk.Entry(scrollable_frame, textvariable=self.github_token_var, width=50, show="*")
         self.token_entry.grid(row=2, column=1, sticky=EW, padx=10)
         self._add_paste_support(self.token_entry)
 
-        # Show/hide token button
         self.show_token = False
         self.toggle_token_btn = ttk.Button(scrollable_frame, text="Show", command=self.toggle_token_visibility, bootstyle="secondary-outline")
         self.toggle_token_btn.grid(row=2, column=2, padx=5)
@@ -831,14 +856,12 @@ class ProApp:
         branch_entry.grid(row=5, column=1, sticky=W, padx=10)
         self._add_paste_support(branch_entry)
 
-        # Upload mode
         mode_frame = ttk.LabelFrame(scrollable_frame, text="Upload Mode")
         mode_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=10, pady=5)
         ttk.Radiobutton(mode_frame, text="Replace file (clear and add new)", variable=self.upload_mode_var, value="replace", bootstyle="toolbutton").pack(anchor=W, padx=5, pady=2)
         ttk.Radiobutton(mode_frame, text="Prepend (add new at beginning)", variable=self.upload_mode_var, value="prepend", bootstyle="toolbutton").pack(anchor=W, padx=5, pady=2)
         ttk.Radiobutton(mode_frame, text="Append (add new at end)", variable=self.upload_mode_var, value="append", bootstyle="toolbutton").pack(anchor=W, padx=5, pady=2)
 
-        # Buttons
         btn_frame = ttk.Frame(scrollable_frame)
         btn_frame.grid(row=7, column=1, sticky=W, pady=10)
         ttk.Button(btn_frame, text="💾 Save GitHub Settings", command=self.save_github_settings, bootstyle="primary-outline").pack(side=LEFT, padx=5)
@@ -848,7 +871,6 @@ class ProApp:
         self.gh_status_label = ttk.Label(scrollable_frame, text="", foreground=INFO)
         self.gh_status_label.grid(row=8, column=0, columnspan=3, pady=5)
 
-        # Guide text
         guide_text = """How to get your GitHub token:
 1. Go to https://github.com/settings/tokens
 2. Click 'Generate new token' (classic)
@@ -873,13 +895,11 @@ How to find the file path:
     # ------------------------------------------------------------------
     def _add_paste_support(self, widget):
         """Add right-click context menu and Ctrl+V paste to Entry widgets."""
-        # Right-click context menu
         menu = tk.Menu(widget, tearoff=0)
         menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"))
         menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"))
         menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
         widget.bind("<Button-3>", lambda e: menu.tk_popup(e.x_root, e.y_root))
-        # Also ensure Ctrl+V works (it should by default, but just in case)
         widget.bind("<Control-v>", lambda e: widget.event_generate("<<Paste>>"))
         widget.bind("<Control-V>", lambda e: widget.event_generate("<<Paste>>"))
 
@@ -890,7 +910,6 @@ How to find the file path:
         url = self.github_url_var.get().strip()
         if not url:
             return
-        # Patterns: https://github.com/OWNER/REPO/blob/BRANCH/PATH or /tree/BRANCH/PATH
         match = re.search(r'https?://github\.com/([^/]+)/([^/]+)/(?:blob|tree)/([^/]+)/(.+)', url)
         if match:
             owner = match.group(1)
@@ -943,7 +962,7 @@ How to find the file path:
         messagebox.showinfo("Saved", "GitHub settings saved.")
 
     # ------------------------------------------------------------------
-    # Event Handlers (existing)
+    # Event Handlers
     # ------------------------------------------------------------------
     def _toggle_timestamp_combo(self, *args):
         if self.timestamp_enabled.get():
@@ -1125,7 +1144,7 @@ How to find the file path:
                 index=idx,
                 protocol=proto,
                 host=extract_host(link),
-                old_name=self._get_old_name(link)
+                old_name=self._get_old_name(link)   # <-- now decoded
             )
             if remove_dup:
                 normalized = link.lower()
@@ -1210,7 +1229,6 @@ How to find the file path:
                 cfg.new_name = new_name
                 cfg.status = "success"
                 stats["renamed"] += 1
-                # Collect country stats
                 if cfg.flag:
                     stats["countries"][cfg.flag] = stats["countries"].get(cfg.flag, 0) + 1
             else:
@@ -1266,7 +1284,6 @@ How to find the file path:
             self.output_text.insert(END, display + "\n")
             self.preview_tree.insert("", END, values=(i+1, cfg.old_name, cfg.new_name, cfg.flag if cfg.flag else "—"))
 
-        # Build detailed summary
         summary_lines = []
         summary_lines.append(f"Total configs: {stats['total']}")
         summary_lines.append(f"Successfully renamed: {stats['renamed']}")
@@ -1288,9 +1305,11 @@ How to find the file path:
         messagebox.showinfo("Processing Complete", msg)
 
     def _get_old_name(self, link: str) -> str:
+        """Extract the old name from a link, decoding percent-encoded parts."""
         if "#" in link:
             try:
-                return link.split("#")[-1]
+                raw = link.split("#")[-1]
+                return unquote(raw)   # <-- decode %XX
             except:
                 pass
         if link.startswith("vmess://"):
@@ -1325,7 +1344,7 @@ How to find the file path:
         self.output_text.insert(END, "\n".join(lines))
 
     # ------------------------------------------------------------------
-    # GitHub Upload (updated)
+    # GitHub Upload
     # ------------------------------------------------------------------
     def upload_to_github(self):
         content = self.output_text.get(1.0, END).strip()
@@ -1431,7 +1450,6 @@ if __name__ == "__main__":
     root.geometry("1200x850")
     root.minsize(1000, 700)
 
-    # Use default modern theme, will be overridden by settings if exists
     _ = Style(theme=DEFAULT_THEME)
 
     app = ProApp(root)
