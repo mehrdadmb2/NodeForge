@@ -382,6 +382,30 @@
             white-space: pre-wrap;
         }
 
+        .country-group {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .country-group h4 {
+            margin-bottom: 5px;
+        }
+
+        .country-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .country-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
         /* Preview Table */
         .preview-table {
             width: 100%;
@@ -730,6 +754,33 @@
             "comoros": "KM", "lesotho": "LS", "eswatini": "SZ", "malawi": "MW"
         };
 
+        // Two-letter ISO code mapping
+        const COUNTRY_CODE_MAP = {
+            "US": "US", "GB": "GB", "UK": "GB", "DE": "DE", "NL": "NL", "FR": "FR",
+            "CA": "CA", "JP": "JP", "SG": "SG", "SE": "SE", "CH": "CH", "FI": "FI",
+            "NO": "NO", "DK": "DK", "IT": "IT", "ES": "ES", "AU": "AU", "NZ": "NZ",
+            "BR": "BR", "IN": "IN", "RU": "RU", "CN": "CN", "TR": "TR", "IR": "IR",
+            "AE": "AE", "SA": "SA", "IL": "IL", "KR": "KR", "HK": "HK", "TW": "TW",
+            "ID": "ID", "MY": "MY", "TH": "TH", "VN": "VN", "PL": "PL", "AT": "AT",
+            "BE": "BE", "CZ": "CZ", "IE": "IE", "PT": "PT", "GR": "GR", "RO": "RO",
+            "BG": "BG", "HU": "HU", "SK": "SK", "SI": "SI", "HR": "HR", "RS": "RS",
+            "UA": "UA", "LV": "LV", "LT": "LT", "EE": "EE", "LU": "LU", "IS": "IS",
+            "CY": "CY", "MT": "MT", "MD": "MD", "GE": "GE", "AM": "AM", "AZ": "AZ",
+            "KZ": "KZ", "UZ": "UZ", "KG": "KG", "TM": "TM", "TJ": "TJ", "AF": "AF",
+            "PK": "PK", "BD": "BD", "LK": "LK", "NP": "NP", "BT": "BT", "MV": "MV",
+            "MM": "MM", "LA": "LA", "KH": "KH", "BN": "BN", "PH": "PH", "MN": "MN",
+            "KP": "KP", "EG": "EG", "LY": "LY", "TN": "TN", "DZ": "DZ", "MA": "MA",
+            "SD": "SD", "SS": "SS", "ET": "ET", "SO": "SO", "KE": "KE", "UG": "UG",
+            "RW": "RW", "BI": "BI", "TZ": "TZ", "MZ": "MZ", "ZM": "ZM", "ZW": "ZW",
+            "BW": "BW", "NA": "NA", "ZA": "ZA", "NG": "NG", "GH": "GH", "CI": "CI",
+            "SN": "SN", "ML": "ML", "BF": "BF", "NE": "NE", "TD": "TD", "CM": "CM",
+            "GA": "GA", "CG": "CG", "CD": "CD", "AO": "AO", "MG": "MG", "MU": "MU",
+            "SC": "SC", "CV": "CV", "ST": "ST", "GQ": "GQ", "CF": "CF", "BJ": "BJ",
+            "TG": "TG", "LR": "LR", "SL": "SL", "GN": "GN", "GW": "GW", "GM": "GM",
+            "MR": "MR", "EH": "EH", "ER": "ER", "DJ": "DJ", "KM": "KM", "LS": "LS",
+            "SZ": "SZ", "MW": "MW"
+        };
+
         function extractCountryFlagFromName(name) {
             if (!name) return '';
             // Flag emoji
@@ -743,6 +794,13 @@
                     if (regex.test(lowerName)) {
                         return countryCodeToFlag(code);
                     }
+                }
+            }
+            // Two-letter code (e.g., US, NL, HK)
+            for (const [code, iso] of Object.entries(COUNTRY_CODE_MAP)) {
+                const regex = new RegExp(`\\b${code}\\b`, 'i');
+                if (regex.test(name)) {
+                    return countryCodeToFlag(iso);
                 }
             }
             return '';
@@ -792,7 +850,8 @@
         function getOldName(link) {
             if (link.includes('#')) {
                 try {
-                    return link.split('#').pop();
+                    // Decode percent-encoded name
+                    return decodeURIComponent(link.split('#').pop());
                 } catch (e) {}
             }
             if (link.startsWith('vmess://')) {
@@ -910,7 +969,7 @@
             document.getElementById('cancelBtn').disabled = false;
             document.getElementById('pauseBtn').textContent = '⏸️ Pause';
             document.getElementById('outputText').value = '';
-            document.getElementById('statsSummary').textContent = '';
+            document.getElementById('statsSummary').innerHTML = '';
 
             configs = [];
 
@@ -1030,7 +1089,7 @@
                 processedCount++;
                 updateProgress(processedCount, totalCount);
                 if (processedCount % 10 === 0 || processedCount === totalCount) {
-                    await new Promise(resolve => setTimeout(resolve, 0)); // Let UI update
+                    await new Promise(resolve => setTimeout(resolve, 0));
                 }
                 if (cancelRequested) break;
             }
@@ -1052,32 +1111,40 @@
             document.getElementById('cancelBtn').disabled = true;
             document.getElementById('pauseBtn').textContent = '⏸️ Pause';
 
-            // Sort if needed? Not implemented here for brevity
-
             const outputText = configs.map(cfg => {
                 if (cfg.status === 'duplicate') return cfg.original + '  ⚠ (duplicate)';
                 return cfg.renamed || cfg.original + '  ⚠ (error)';
             }).join('\n');
             document.getElementById('outputText').value = outputText;
 
-            // Stats summary
-            let summary = `Total configs: ${stats.total}\n`;
-            summary += `Successfully renamed: ${stats.renamed}\n`;
-            summary += `Failed: ${stats.failed}\n`;
-            summary += `Duplicates: ${stats.duplicates}\n`;
+            // Build detailed summary with country grouping
+            let summaryHtml = `<div><strong>Total configs:</strong> ${stats.total}</div>`;
+            summaryHtml += `<div><strong>Successfully renamed:</strong> ${stats.renamed}</div>`;
+            summaryHtml += `<div><strong>Failed:</strong> ${stats.failed}</div>`;
+            summaryHtml += `<div><strong>Duplicates:</strong> ${stats.duplicates}</div>`;
+
+            // Protocols
             if (Object.keys(stats.protocols).length > 0) {
-                summary += '\nProtocols:\n';
+                summaryHtml += `<div><strong>Protocols:</strong></div><ul>`;
                 for (const [proto, count] of Object.entries(stats.protocols).sort()) {
-                    summary += `  ${proto}: ${count}\n`;
+                    summaryHtml += `<li>${proto}: ${count}</li>`;
                 }
+                summaryHtml += `</ul>`;
             }
+
+            // Countries grouping
             if (Object.keys(stats.countries).length > 0) {
-                summary += '\nCountries (flags):\n';
-                for (const [flag, count] of Object.entries(stats.countries).sort((a,b) => b[1]-a[1])) {
-                    summary += `  ${flag}: ${count}\n`;
+                summaryHtml += `<div><strong>Countries (by flag):</strong></div>`;
+                const sortedCountries = Object.entries(stats.countries).sort((a,b) => b[1] - a[1]);
+                summaryHtml += `<div class="country-group"><ul class="country-list">`;
+                for (const [flag, count] of sortedCountries) {
+                    // Get country name from flag if possible (optional)
+                    summaryHtml += `<li><span>${flag}</span><span>${count} config(s)</span></li>`;
                 }
+                summaryHtml += `</ul></div>`;
             }
-            document.getElementById('statsSummary').textContent = summary;
+
+            document.getElementById('statsSummary').innerHTML = summaryHtml;
             log(`Processing completed: ${stats.total} configs processed.`);
             updateStatus(`Processing complete: ${stats.total} total, ${stats.renamed} renamed, ${stats.failed} failed, ${stats.duplicates} duplicates.`);
         }
@@ -1217,7 +1284,6 @@
         }
 
         function saveGitHubSettings() {
-            // Save to localStorage for convenience
             localStorage.setItem('githubToken', document.getElementById('githubToken').value);
             localStorage.setItem('githubRepo', document.getElementById('githubRepo').value);
             localStorage.setItem('githubPath', document.getElementById('githubPath').value);
@@ -1281,7 +1347,6 @@
             };
 
             try {
-                // Get current file SHA
                 let sha = null;
                 let currentContent = '';
                 const getResp = await fetch(`${apiUrl}?ref=${branch}`, { headers });
@@ -1335,7 +1400,6 @@
         }
 
         function saveSettings() {
-            // Save settings to localStorage (optional)
             localStorage.setItem('maxThreads', document.getElementById('maxThreads').value);
             localStorage.setItem('removeDuplicates', document.getElementById('removeDuplicates').checked);
             alert('Settings saved.');
@@ -1354,7 +1418,6 @@
 
         // ===== Load saved settings on startup =====
         window.addEventListener('DOMContentLoaded', () => {
-            // Load GitHub settings from localStorage if exist
             const token = localStorage.getItem('githubToken');
             if (token) document.getElementById('githubToken').value = token;
             const repo = localStorage.getItem('githubRepo');
